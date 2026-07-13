@@ -148,6 +148,45 @@
     padding:5px 10px; border-radius:8px; background:var(--card);
   }
 
+  .video-grid{
+    display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:18px;
+  }
+  .video-card{
+    background:var(--card); border:1px solid var(--border); border-radius:12px;
+    padding:14px 16px; box-shadow:var(--shadow);
+  }
+  .video-card-label{font-size:12.5px; font-weight:600; color:var(--text); margin-bottom:10px;}
+  .video-link-row{display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+  .yt-watch-link{
+    display:inline-flex; align-items:center; gap:7px; text-decoration:none;
+    background:#FF0000; color:#fff; font-weight:600; font-size:13px;
+    padding:9px 14px; border-radius:9px; transition:filter .15s ease;
+  }
+  .yt-watch-link:hover{filter:brightness(1.08);}
+  .yt-edit-btn{
+    background:var(--bg); border:1px solid var(--border); color:var(--muted);
+    font-size:12px; padding:8px 11px; border-radius:9px; cursor:pointer;
+  }
+  .yt-edit-btn:hover{color:var(--primary); border-color:var(--primary);}
+  .yt-edit-row{display:flex; gap:8px; flex-wrap:wrap; align-items:center;}
+  .yt-edit-row input[type="url"]{
+    flex:1; min-width:180px; padding:9px 10px; border-radius:9px; border:1px solid var(--border);
+    background:var(--bg); color:var(--text); font-size:13px;
+  }
+  .yt-save-btn{
+    background:var(--primary); color:#fff; border:none; font-size:12.5px; font-weight:600;
+    padding:9px 13px; border-radius:9px; cursor:pointer;
+  }
+  .yt-save-btn:hover{background:var(--primary-dark);}
+  .yt-cancel-btn{
+    background:none; border:1px solid var(--border); color:var(--muted); font-size:12.5px;
+    padding:9px 12px; border-radius:9px; cursor:pointer;
+  }
+  .yt-cancel-btn:hover{color:var(--text);}
+  @media (max-width:800px){
+    .video-grid{grid-template-columns:1fr;}
+  }
+
   .topic-list{display:flex; flex-direction:column; gap:10px;}
   .topic-row{
     background:var(--card); border:1px solid var(--border); border-radius:11px; padding:12px 14px;
@@ -293,6 +332,64 @@
 /* =========================================================
    DATA — 14 Day Azure-for-.NET-Developer roadmap
    ========================================================= */
+/* The original complete 14-topic video — kept available on every day
+   alongside that day's focused video, per user preference. */
+const FULL_COURSE_VIDEO = "https://youtu.be/NKEFWyqJ5XA";
+const FULL_VIDEO_KEY = "azureTrackerFullVideo_v1";
+
+function getFullCourseVideo(){
+  return localStorage.getItem(FULL_VIDEO_KEY) || FULL_COURSE_VIDEO;
+}
+function setFullCourseVideo(url){
+  localStorage.setItem(FULL_VIDEO_KEY, url);
+}
+
+/* Renders a simple "watch on YouTube" link plus an Edit control that
+   lets you swap in your own favourite link for that video slot. */
+function youTubeLinkRowHTML(url, rowId){
+  return `
+    <div class="video-link-row" data-row="${rowId}">
+      <a class="yt-watch-link" href="${url}" target="_blank" rel="noopener">▶ Watch on YouTube</a>
+      <button type="button" class="yt-edit-btn" data-edit-row="${rowId}">✎ Edit link</button>
+    </div>
+    <div class="yt-edit-row" data-edit-form="${rowId}" style="display:none; margin-top:8px;">
+      <input type="url" data-edit-input="${rowId}" placeholder="Paste your preferred YouTube link…" value="${url}">
+      <button type="button" class="yt-save-btn" data-save-row="${rowId}">💾 Save</button>
+      <button type="button" class="yt-cancel-btn" data-cancel-row="${rowId}">✕ Cancel</button>
+    </div>`;
+}
+
+/* Wires up the Edit / Save / Cancel buttons for a link row. `onSave`
+   receives the new URL string and is responsible for persisting it. */
+function wireYouTubeLinkRow(container, rowId, onSave){
+  const editBtn = container.querySelector(`[data-edit-row="${rowId}"]`);
+  const cancelBtn = container.querySelector(`[data-cancel-row="${rowId}"]`);
+  const saveBtn = container.querySelector(`[data-save-row="${rowId}"]`);
+  const form = container.querySelector(`[data-edit-form="${rowId}"]`);
+  const input = container.querySelector(`[data-edit-input="${rowId}"]`);
+  const linkRow = container.querySelector(`.video-link-row[data-row="${rowId}"]`);
+  if(!editBtn) return;
+  editBtn.addEventListener("click", ()=>{
+    form.style.display = "flex";
+    linkRow.style.display = "none";
+    input.focus();
+    input.select();
+  });
+  cancelBtn.addEventListener("click", ()=>{
+    form.style.display = "none";
+    linkRow.style.display = "flex";
+  });
+  saveBtn.addEventListener("click", ()=>{
+    const val = input.value.trim();
+    if(!val){ alert("Please paste a YouTube link first."); return; }
+    onSave(val);
+  });
+  input.addEventListener("keydown", e=>{
+    if(e.key==="Enter"){ e.preventDefault(); saveBtn.click(); }
+    if(e.key==="Escape"){ cancelBtn.click(); }
+  });
+}
+
 const ROADMAP = [
 { id:1, title:"Cloud Computing Fundamentals",
   topics:["Why Cloud","IaaS","PaaS","SaaS","Public Cloud","Private Cloud","Hybrid Cloud","Azure Global Infrastructure","Azure Regions","Availability Zones","Resource Groups","Azure Portal","Azure Free Account"],
@@ -301,7 +398,7 @@ const ROADMAP = [
   scenario:"You're moving the LKM Bookstore API to Azure and must decide between a VM (IaaS) and App Service (PaaS), then organize Dev/Test/Prod resources sensibly.",
   mistakes:["Dumping every environment's resources into one Resource Group","Picking a region without considering latency, cost or data-residency rules"],
   bestPractices:["One Resource Group per environment/application","Tag every resource for cost tracking and ownership","Choose a primary region close to users, paired with a DR region"],
-  docLink:"https://learn.microsoft.com/azure/", youtube:"https://youtu.be/NKEFWyqJ5XA", estLearn:90, estRevision:20 },
+  docLink:"https://learn.microsoft.com/azure/", youtube:"https://www.youtube.com/watch?v=Q37ISXs_zK0", estLearn:90, estRevision:20 },
 
 { id:2, title:"Azure Virtual Machines & Networking Basics",
   topics:["Virtual Machines","Disks","Storage","Virtual Network","Subnet","NSG","Public IP","Private IP","Bastion","Load Balancer Basics"],
@@ -310,7 +407,7 @@ const ROADMAP = [
   scenario:"Your team needs a VM-hosted background worker for LKM Bookstore that can only be reached from the App Service subnet, never from the public internet.",
   mistakes:["Opening RDP/SSH (3389/22) directly to the internet","Using a single flat subnet for every tier of the application"],
   bestPractices:["Use NSGs to allow only required ports between subnets","Use Bastion or a jump box instead of public RDP/SSH","Separate subnets per tier (web, app, data)"],
-  docLink:"https://learn.microsoft.com/azure/virtual-network/", youtube:"https://youtu.be/NKEFWyqJ5XA", estLearn:100, estRevision:25 },
+  docLink:"https://learn.microsoft.com/azure/virtual-network/", youtube:"https://www.youtube.com/watch?v=9voQSFvt9sw", estLearn:100, estRevision:25 },
 
 { id:3, title:"Azure App Service",
   topics:["App Service Plan","Deployment Slots","Publishing ASP.NET Core Web API","Publishing MVC","Configuration","Scaling","Custom Domains","SSL"],
@@ -319,7 +416,7 @@ const ROADMAP = [
   scenario:"You need to deploy a new version of LKM Bookstore's API without downtime, and roll back instantly if health checks fail after go-live.",
   mistakes:["Testing directly in the production slot","Storing secrets in appsettings.json instead of App Service configuration or Key Vault"],
   bestPractices:["Deploy to a staging slot, warm it up, then swap","Use auto-scale rules based on CPU/queue length, not just fixed instance counts"],
-  docLink:"https://learn.microsoft.com/azure/app-service/", youtube:"https://youtu.be/NKEFWyqJ5XA", estLearn:100, estRevision:25 },
+  docLink:"https://learn.microsoft.com/azure/app-service/", youtube:"https://www.youtube.com/watch?v=IHeQadtHXxk", estLearn:100, estRevision:25 },
 
 { id:4, title:"Azure SQL Database",
   topics:["Connection Strings","Firewall","Backup","Restore","Geo Replication","SQL Performance","Entity Framework Connection"],
@@ -328,7 +425,7 @@ const ROADMAP = [
   scenario:"LKM Bookstore's orders table is growing fast and a recent deploy caused timeouts — you need to find and fix the slow query without downtime.",
   mistakes:["Leaving 'Allow Azure services' firewall rule open with no additional restriction","Ignoring DTU/vCore utilization until the database is already throttling"],
   bestPractices:["Use Azure AD authentication over SQL logins where possible","Set up alerts on DTU/vCore usage and deadlocks","Use Query Performance Insight to find expensive queries"],
-  docLink:"https://learn.microsoft.com/azure/azure-sql/", youtube:"https://youtu.be/NKEFWyqJ5XA", estLearn:95, estRevision:20 },
+  docLink:"https://learn.microsoft.com/azure/azure-sql/", youtube:"https://www.youtube.com/watch?v=KZK1DJfjNDA", estLearn:95, estRevision:20 },
 
 { id:5, title:"Azure Storage Account",
   topics:["Blob Storage","Containers","File Storage","Queues","Tables","Static Website Hosting","SAS Token"],
@@ -337,7 +434,7 @@ const ROADMAP = [
   scenario:"LKM Bookstore needs to let users upload book cover images directly from the browser without routing the file through your API.",
   mistakes:["Sharing the Storage Account key instead of a scoped SAS token","Making a container public when only specific blobs need public access"],
   bestPractices:["Issue short-lived, least-privilege SAS tokens per operation","Use private containers plus SAS for user uploads","Enable soft delete on blob containers"],
-  docLink:"https://learn.microsoft.com/azure/storage/", youtube:"https://youtu.be/NKEFWyqJ5XA", estLearn:90, estRevision:20 },
+  docLink:"https://learn.microsoft.com/azure/storage/", youtube:"https://www.youtube.com/watch?v=GTQjlEOdAKI", estLearn:90, estRevision:20 },
 
 { id:6, title:"Azure Functions",
   topics:["Triggers","HTTP Trigger","Timer Trigger","Blob Trigger","Dependency Injection","Publishing Functions","Real Time Use Cases"],
@@ -346,7 +443,7 @@ const ROADMAP = [
   scenario:"LKM Bookstore needs a nightly job that scans for overdue book reservations and sends reminder emails — a perfect Timer Trigger use case.",
   mistakes:["Doing long-running, stateful work inside a Consumption-plan function (cold starts, timeouts)","Not making functions idempotent, causing duplicate side-effects on retry"],
   bestPractices:["Keep functions small, stateless and idempotent","Use Durable Functions for multi-step orchestration","Choose Premium plan for latency-sensitive or long-running workloads"],
-  docLink:"https://learn.microsoft.com/azure/azure-functions/", youtube:"https://youtu.be/NKEFWyqJ5XA", estLearn:105, estRevision:25 },
+  docLink:"https://learn.microsoft.com/azure/azure-functions/", youtube:"https://www.youtube.com/watch?v=qnLF3eOuxyk", estLearn:105, estRevision:25 },
 
 { id:7, title:"Azure Logic Apps",
   topics:["Logic Apps vs Functions","Workflow","Email Automation","Approval Workflow","Connectors","Real Time Examples"],
@@ -355,7 +452,7 @@ const ROADMAP = [
   scenario:"A new large book order for LKM Bookstore should trigger a manager approval email before the order is confirmed — a low-code Logic App fits well here.",
   mistakes:["Using a Logic App for high-throughput, latency-sensitive processing better suited to code","Ignoring the per-action cost model on high-volume workflows"],
   bestPractices:["Use Logic Apps for low-code business workflows and SaaS integrations","Use Functions/code for high-volume, performance-critical logic"],
-  docLink:"https://learn.microsoft.com/azure/logic-apps/", youtube:"https://youtu.be/NKEFWyqJ5XA", estLearn:80, estRevision:18 },
+  docLink:"https://learn.microsoft.com/azure/logic-apps/", youtube:"https://www.youtube.com/watch?v=aKWSPag0P_s", estLearn:80, estRevision:18 },
 
 { id:8, title:"Azure Key Vault",
   topics:["Secrets","Certificates","Keys","Managed Identity","Using Key Vault from ASP.NET Core","Real Project Example"],
@@ -364,7 +461,7 @@ const ROADMAP = [
   scenario:"LKM Bookstore's SQL connection string and JWT signing key currently sit in appsettings.json — you need to move both into Key Vault safely.",
   mistakes:["Granting broad 'Contributor' access instead of scoped Key Vault access policies/RBAC","Hard-coding a Key Vault client secret instead of using Managed Identity"],
   bestPractices:["Enable Managed Identity on the App Service and grant least-privilege access","Use Key Vault references in App Service configuration","Enable soft-delete and purge protection"],
-  docLink:"https://learn.microsoft.com/azure/key-vault/", youtube:"https://youtu.be/NKEFWyqJ5XA", estLearn:95, estRevision:22 },
+  docLink:"https://learn.microsoft.com/azure/key-vault/", youtube:"https://www.youtube.com/watch?v=lMRcUWny8E8", estLearn:95, estRevision:22 },
 
 { id:9, title:"Azure Service Bus",
   topics:["Queues","Topics","Subscriptions","Dead Letter Queue","Retry","Message Ordering","Real Time Example"],
@@ -373,7 +470,7 @@ const ROADMAP = [
   scenario:"When a book order is placed on LKM Bookstore, both the Inventory service and the Notification service need to react independently — a Topic with two Subscriptions fits perfectly.",
   mistakes:["Using a single Queue when multiple independent consumers need the same event","Not configuring max delivery count, letting poison messages loop forever"],
   bestPractices:["Use Topics + Subscriptions for pub-sub across microservices","Set sensible max delivery count and monitor the Dead Letter Queue","Use sessions when strict per-entity ordering is required"],
-  docLink:"https://learn.microsoft.com/azure/service-bus-messaging/", youtube:"https://youtu.be/NKEFWyqJ5XA", estLearn:110, estRevision:28 },
+  docLink:"https://learn.microsoft.com/azure/service-bus-messaging/", youtube:"https://www.youtube.com/watch?v=kzJIg6MAEXc", estLearn:110, estRevision:28 },
 
 { id:10, title:"Azure Monitor & Observability",
   topics:["Application Insights","Logging","Metrics","Alerts","Distributed Tracing","Serilog Integration","Monitoring ASP.NET Core"],
@@ -382,7 +479,7 @@ const ROADMAP = [
   scenario:"Customers report LKM Bookstore checkout is intermittently slow — you need end-to-end tracing across the API, SQL and Service Bus calls to find the bottleneck.",
   mistakes:["Logging only unstructured strings, making queries in Log Analytics painful","No alerting configured until an outage is already user-facing"],
   bestPractices:["Use structured logging (Serilog) with correlation/operation IDs","Set proactive alerts on latency, error rate and dependency failures","Sample telemetry sensibly to control cost at scale"],
-  docLink:"https://learn.microsoft.com/azure/azure-monitor/", youtube:"https://youtu.be/NKEFWyqJ5XA", estLearn:100, estRevision:24 },
+  docLink:"https://learn.microsoft.com/azure/azure-monitor/", youtube:"https://www.youtube.com/watch?v=2wHusevxUDI", estLearn:100, estRevision:24 },
 
 { id:11, title:"Azure DevOps",
   topics:["Repos","Boards","Pipelines","Artifacts","Release Pipeline","CI/CD","Deploy ASP.NET Core"],
@@ -391,7 +488,7 @@ const ROADMAP = [
   scenario:"You want every pull request into LKM Bookstore's main branch to automatically build, run unit tests, and block merge on failure.",
   mistakes:["No branch policies, allowing merges without passing CI","Manually deploying to production instead of using a repeatable pipeline"],
   bestPractices:["Require CI success and code review before merge","Use YAML pipelines stored in source control (pipeline-as-code)","Add approval gates before production deployment"],
-  docLink:"https://learn.microsoft.com/azure/devops/", youtube:"https://youtu.be/NKEFWyqJ5XA", estLearn:105, estRevision:25 },
+  docLink:"https://learn.microsoft.com/azure/devops/", youtube:"https://www.youtube.com/watch?v=eOQL0nXQlLs", estLearn:105, estRevision:25 },
 
 { id:12, title:"Docker",
   topics:["Containers","Dockerfile","Images","Volumes","Publishing ASP.NET Core","Azure Container Registry","Container Apps Overview"],
@@ -400,7 +497,7 @@ const ROADMAP = [
   scenario:"You want to containerize LKM Bookstore's API so it runs identically on your laptop and in Azure, without 'works on my machine' issues.",
   mistakes:["Shipping the SDK image to production instead of a slim runtime image","Baking secrets/connection strings directly into the image"],
   bestPractices:["Use multi-stage builds: SDK to build, runtime image to ship","Pass configuration via environment variables, not the image","Scan images for vulnerabilities before pushing to ACR"],
-  docLink:"https://learn.microsoft.com/azure/container-registry/", youtube:"https://youtu.be/NKEFWyqJ5XA", estLearn:100, estRevision:24 },
+  docLink:"https://learn.microsoft.com/azure/container-registry/", youtube:"https://www.youtube.com/watch?v=q8nXv56gWms", estLearn:100, estRevision:24 },
 
 { id:13, title:"AKS Basics",
   topics:["Pods","Deployments","ReplicaSets","Services","Ingress","Scaling","Deploy ASP.NET Core Application"],
@@ -409,7 +506,7 @@ const ROADMAP = [
   scenario:"LKM Bookstore's API image (built in Day 12) needs to run as 3 replicas behind a single public endpoint on AKS, scaling automatically under load.",
   mistakes:["No resource requests/limits set, letting one pod starve the node","Exposing every service directly instead of routing through Ingress"],
   bestPractices:["Set CPU/memory requests and limits on every Deployment","Use readiness/liveness probes so traffic only reaches healthy pods","Use Ingress + a single entry point instead of many public LoadBalancers"],
-  docLink:"https://learn.microsoft.com/azure/aks/", youtube:"https://youtu.be/NKEFWyqJ5XA", estLearn:115, estRevision:30 },
+  docLink:"https://learn.microsoft.com/azure/aks/", youtube:"https://www.youtube.com/watch?v=mUoMffa32zA", estLearn:115, estRevision:30 },
 
 { id:14, title:"Mini Project — End-to-End Deployment",
   topics:["Create ASP.NET Core Web API","Azure SQL","Azure App Service","Key Vault","Service Bus","Application Insights","Deploy Complete Project","CI/CD","Documentation"],
@@ -418,7 +515,7 @@ const ROADMAP = [
   scenario:"This is the capstone: deploy LKM Bookstore end-to-end on Azure exactly as you'd present it in a Round 3 system-design discussion.",
   mistakes:["Presenting components in isolation instead of explaining how they connect end-to-end","No documentation, making the architecture hard to explain under interview pressure"],
   bestPractices:["Draw and rehearse a one-page architecture diagram you can talk through in 60 seconds","Write a short README covering architecture, deployment steps and trade-offs"],
-  docLink:"https://learn.microsoft.com/azure/architecture/", youtube:"https://youtu.be/NKEFWyqJ5XA", estLearn:150, estRevision:40 }
+  docLink:"https://learn.microsoft.com/azure/architecture/", youtube:"https://www.youtube.com/watch?v=8tYvsO4emAc", estLearn:150, estRevision:40 }
 ];
 
 /* =========================================================
@@ -428,17 +525,29 @@ const STORAGE_KEY = "azureTrackerState_v1";
 const THEME_KEY = "azureTrackerTheme_v1";
 
 function loadState(){
+  let loaded = null;
   try{
     const raw = localStorage.getItem(STORAGE_KEY);
-    if(raw) return JSON.parse(raw);
+    if(raw) loaded = JSON.parse(raw);
   }catch(e){ console.warn("Could not parse saved state", e); }
+
   const fresh = {};
   ROADMAP.forEach(day=>{
+    const existing = loaded && loaded[day.id] ? loaded[day.id] : {};
     fresh[day.id] = {
-      topicStatus: {}, // topicName -> "not-started"|"progress"|"completed"|"revision"
-      notes:"", timeSpent:"", difficulty:"Medium", revisionDate:"", expandOpen:false
+      topicStatus: existing.topicStatus || {},
+      notes: existing.notes || "",
+      timeSpent: existing.timeSpent || "",
+      difficulty: existing.difficulty || "Medium",
+      revisionDate: existing.revisionDate || "",
+      expandOpen: existing.expandOpen || false,
+      // Editable per-day video link — defaults to the built-in
+      // topic-specific video, but can be overwritten manually.
+      youtubeLink: existing.youtubeLink || day.youtube
     };
-    day.topics.forEach(t=> fresh[day.id].topicStatus[t] = "not-started");
+    day.topics.forEach(t=>{
+      if(!fresh[day.id].topicStatus[t]) fresh[day.id].topicStatus[t] = "not-started";
+    });
   });
   return fresh;
 }
@@ -557,8 +666,18 @@ function renderDayContent(){
       <h3>Day ${day.id} — ${day.title}</h3>
       <div class="links">
         <a class="tag-link" href="${day.docLink}" target="_blank" rel="noopener">📘 Microsoft Docs</a>
-        <a class="tag-link" href="${day.youtube}" target="_blank" rel="noopener">▶ YouTube</a>
         <span class="tag-link">⏱ Learn ~${day.estLearn}min · Revise ~${day.estRevision}min</span>
+      </div>
+    </div>
+
+    <div class="video-grid">
+      <div class="video-card">
+        <div class="video-card-label">📅 Day ${day.id} Focused Video — ${day.title}</div>
+        ${youTubeLinkRowHTML(dState.youtubeLink, "day")}
+      </div>
+      <div class="video-card">
+        <div class="video-card-label">🎬 Full Course Video — All 14 Topics</div>
+        ${youTubeLinkRowHTML(getFullCourseVideo(), "full")}
       </div>
     </div>
 
@@ -614,6 +733,17 @@ function renderDayContent(){
       </div>
     </div>
   `;
+
+  // wire up "Edit link" controls for both video rows
+  wireYouTubeLinkRow(container, "day", (newUrl)=>{
+    dState.youtubeLink = newUrl;
+    saveState();
+    renderDayContent();
+  });
+  wireYouTubeLinkRow(container, "full", (newUrl)=>{
+    setFullCourseVideo(newUrl);
+    renderDayContent();
+  });
 
   // topic rows
   const topicList = document.getElementById("topicList");
