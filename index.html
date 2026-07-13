@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Azure for .NET Developer — 14-Day Study Tracker</title>
+<style>
+  :root{
+    --primary:#0078D4;
+    --primary-dark:#005A9E;
+    --bg:#F5F9FC;
+    --card:#ffffff;
+    --text:#1B2733;
+    --muted:#5B6B7B;
+    --border:#E1E9F0;
+    --gray:#9AA7B2;
+    --blue:#0078D4;
+    --green:#12A454;
+    --orange:#E8890C;
+    --radius:14px;
+    --shadow:0 2px 10px rgba(15,55,90,.06), 0 10px 30px rgba(15,55,90,.05);
+    --sidebar-w:270px;
+  }
+  [data-theme="dark"]{
+    --bg:#0B1420;
+    --card:#101B2B;
+    --text:#E8EEF5;
+    --muted:#93A4B8;
+    --border:#1E2C3E;
+    --gray:#5C6B7D;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    transition:background .3s ease, color .3s ease;
+    min-height:100vh;
+  }
+  /* ---------- Layout shell ---------- */
+  .app{display:flex; min-height:100vh;}
+  .sidebar{
+    width:var(--sidebar-w);
+    background:linear-gradient(180deg, var(--primary-dark), var(--primary));
+    color:#fff;
+    position:sticky; top:0; height:100vh; overflow-y:auto;
+    padding:20px 14px 30px;
+    flex-shrink:0;
+    z-index:20;
+  }
+  .brand{display:flex; align-items:center; gap:10px; padding:6px 8px 18px;}
+  .brand .logo{
+    width:34px;height:34px;border-radius:9px;background:rgba(255,255,255,.18);
+    display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;
+  }
+  .brand h1{font-size:15px; margin:0; line-height:1.25; font-weight:600;}
+  .brand span{display:block; font-size:11px; opacity:.75; font-weight:400;}
+
+  .day-rail{position:relative; padding-left:6px;}
+  .day-rail::before{
+    content:"";position:absolute; left:20px; top:6px; bottom:6px; width:2px;
+    background:rgba(255,255,255,.22);
+  }
+  .day-item{
+    position:relative; display:flex; align-items:center; gap:12px;
+    padding:9px 10px 9px 4px; border-radius:10px; cursor:pointer;
+    margin-bottom:2px; transition:background .15s ease;
+  }
+  .day-item:hover{background:rgba(255,255,255,.09);}
+  .day-item.active{background:rgba(255,255,255,.16);}
+  .day-node{
+    width:32px;height:32px;border-radius:50%;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;
+    font-size:12px;font-weight:700;
+    background:rgba(255,255,255,.12); border:2px solid rgba(255,255,255,.35);
+    position:relative; z-index:1;
+  }
+  .day-node.done{background:#12A454; border-color:#12A454;}
+  .day-node.progress{background:#0078D4; border-color:#bfe0ff;}
+  .day-node.revision{background:#E8890C; border-color:#E8890C;}
+  .day-label{font-size:13px; line-height:1.3;}
+  .day-label b{display:block; font-size:12.5px; font-weight:600;}
+  .day-label small{opacity:.75; font-size:11px;}
+
+  .main{flex:1; min-width:0; padding:22px 26px 60px;}
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between; gap:14px;
+    flex-wrap:wrap; margin-bottom:18px; position:sticky; top:0; background:var(--bg);
+    padding:10px 0; z-index:10;
+  }
+  .topbar h2{margin:0; font-size:20px;}
+  .topbar .actions{display:flex; gap:8px; flex-wrap:wrap;}
+  .btn{
+    border:1px solid var(--border); background:var(--card); color:var(--text);
+    padding:8px 13px; border-radius:9px; font-size:13px; cursor:pointer;
+    display:inline-flex; align-items:center; gap:6px; transition:.15s ease;
+  }
+  .btn:hover{border-color:var(--primary); color:var(--primary);}
+  .btn.primary{background:var(--primary); border-color:var(--primary); color:#fff;}
+  .btn.primary:hover{background:var(--primary-dark); border-color:var(--primary-dark); color:#fff;}
+  .btn.small{padding:5px 9px; font-size:12px;}
+
+  /* ---------- Dashboard ---------- */
+  .dashboard{
+    display:grid; grid-template-columns:repeat(6, 1fr); gap:14px; margin-bottom:22px;
+  }
+  .card{
+    background:var(--card); border:1px solid var(--border); border-radius:var(--radius);
+    box-shadow:var(--shadow); padding:16px;
+  }
+  .stat-card{grid-column:span 1; display:flex; flex-direction:column; gap:6px;}
+  .stat-card .num{font-size:22px; font-weight:700;}
+  .stat-card .lbl{font-size:12px; color:var(--muted);}
+  .ring-card{grid-column:span 2; display:flex; align-items:center; gap:16px;}
+  .ring{width:78px;height:78px; flex-shrink:0;}
+  .ring-info b{font-size:13px; display:block;}
+  .ring-info span{font-size:12px; color:var(--muted);}
+  .today-card{grid-column:span 6; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;}
+  .today-card .t-title{font-size:13px; color:var(--muted); margin-bottom:3px;}
+  .today-card .t-name{font-size:16px; font-weight:600;}
+  @media (max-width:980px){
+    .dashboard{grid-template-columns:repeat(2,1fr);}
+    .ring-card{grid-column:span 2;}
+    .today-card{grid-column:span 2;}
+  }
+
+  /* ---------- Controls row ---------- */
+  .controls{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px; align-items:center;}
+  .search-box{
+    flex:1; min-width:200px; display:flex; align-items:center; gap:8px;
+    background:var(--card); border:1px solid var(--border); border-radius:9px; padding:8px 12px;
+  }
+  .search-box input{border:none; outline:none; background:transparent; color:var(--text); width:100%; font-size:13px;}
+  .filters{display:flex; gap:6px; flex-wrap:wrap;}
+  .filter-chip{
+    border:1px solid var(--border); background:var(--card); padding:6px 12px; border-radius:20px;
+    font-size:12.5px; cursor:pointer; color:var(--muted);
+  }
+  .filter-chip.active{background:var(--primary); color:#fff; border-color:var(--primary);}
+
+  /* ---------- Day content ---------- */
+  .day-header{margin-bottom:14px;}
+  .day-header h3{margin:0 0 4px; font-size:19px;}
+  .day-header .links{display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;}
+  .tag-link{
+    font-size:12px; text-decoration:none; color:var(--primary); border:1px solid var(--border);
+    padding:5px 10px; border-radius:8px; background:var(--card);
+  }
+
+  .topic-list{display:flex; flex-direction:column; gap:10px;}
+  .topic-row{
+    background:var(--card); border:1px solid var(--border); border-radius:11px; padding:12px 14px;
+    display:flex; align-items:center; gap:12px;
+  }
+  .topic-row input[type=checkbox]{width:18px; height:18px; accent-color:var(--primary); flex-shrink:0; cursor:pointer;}
+  .topic-row .name{flex:1; font-size:14px;}
+  .topic-row .name.done{text-decoration:line-through; color:var(--muted);}
+  .dot{width:9px;height:9px;border-radius:50%; flex-shrink:0;}
+  .dot.gray{background:var(--gray);}
+  .dot.blue{background:var(--blue);}
+  .dot.green{background:var(--green);}
+  .dot.orange{background:var(--orange);}
+
+  .expand-card{
+    background:var(--card); border:1px solid var(--border); border-radius:var(--radius);
+    padding:18px; margin-top:16px; box-shadow:var(--shadow);
+  }
+  .expand-toggle{
+    display:flex; align-items:center; justify-content:space-between; cursor:pointer;
+    padding:4px 0;
+  }
+  .expand-toggle h4{margin:0; font-size:15px;}
+  .expand-body{display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:14px;}
+  @media (max-width:760px){.expand-body{grid-template-columns:1fr;}}
+  .expand-body h5{margin:0 0 6px; font-size:12.5px; text-transform:uppercase; letter-spacing:.04em; color:var(--primary);}
+  .expand-body ul{margin:0 0 14px; padding-left:18px; font-size:13.5px; color:var(--text); line-height:1.5;}
+  .expand-body p{font-size:13.5px; line-height:1.55; margin:0 0 14px; color:var(--text);}
+
+  .meta-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:16px;}
+  @media (max-width:760px){.meta-grid{grid-template-columns:repeat(2,1fr);}}
+  .field label{display:block; font-size:11.5px; color:var(--muted); margin-bottom:5px;}
+  .field select, .field input[type=date], .field input[type=number]{
+    width:100%; padding:7px 8px; border-radius:8px; border:1px solid var(--border);
+    background:var(--bg); color:var(--text); font-size:13px;
+  }
+  .field textarea{
+    width:100%; min-height:64px; padding:8px; border-radius:8px; border:1px solid var(--border);
+    background:var(--bg); color:var(--text); font-size:13px; font-family:inherit; resize:vertical;
+  }
+
+  footer.notice{margin-top:26px; font-size:11.5px; color:var(--muted); text-align:center;}
+
+  ::-webkit-scrollbar{width:8px; height:8px;}
+  ::-webkit-scrollbar-thumb{background:rgba(120,140,160,.4); border-radius:8px;}
+
+  @media print{
+    .sidebar, .topbar .actions, .controls, .expand-toggle-icon{display:none !important;}
+    .app{display:block;}
+    .main{padding:0;}
+  }
+
+  @media (max-width:860px){
+    .app{flex-direction:column;}
+    .sidebar{position:relative; height:auto; width:100%;}
+    .day-rail{display:flex; overflow-x:auto; gap:4px;}
+    .day-rail::before{display:none;}
+    .day-item{flex-direction:column; min-width:64px; text-align:center;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo">☁</div>
+      <div>
+        <h1>Azure Tracker<span>.NET → Azure Developer, 14 Days</span></h1>
+      </div>
+    </div>
+    <div class="day-rail" id="dayRail"></div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="topbar">
+      <h2 id="pageTitle">Dashboard</h2>
+      <div class="actions">
+        <button class="btn" id="themeToggle">🌙 Dark mode</button>
+        <button class="btn" id="exportJsonBtn">⭳ Export JSON</button>
+        <button class="btn" id="importJsonBtn">⭱ Import JSON</button>
+        <input type="file" id="importFile" accept="application/json" hidden>
+        <button class="btn" id="exportCsvBtn">⭳ Export Excel (CSV)</button>
+        <button class="btn primary" id="exportPdfBtn">🖨 Export PDF</button>
+      </div>
+    </div>
+
+    <!-- Dashboard -->
+    <section class="dashboard" id="dashboard">
+      <div class="card ring-card">
+        <svg class="ring" viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="42" fill="none" stroke="var(--border)" stroke-width="10"/>
+          <circle id="ringFg" cx="50" cy="50" r="42" fill="none" stroke="var(--primary)" stroke-width="10"
+            stroke-linecap="round" stroke-dasharray="264" stroke-dashoffset="264" transform="rotate(-90 50 50)"/>
+          <text id="ringText" x="50" y="56" text-anchor="middle" font-size="20" font-weight="700" fill="var(--text)">0%</text>
+        </svg>
+        <div class="ring-info">
+          <b>Overall Progress</b>
+          <span id="overallSub">0 of 0 topics completed</span>
+        </div>
+      </div>
+      <div class="card stat-card"><div class="num" id="statCompleted">0</div><div class="lbl">Completed</div></div>
+      <div class="card stat-card"><div class="num" id="statProgress">0</div><div class="lbl">In Progress</div></div>
+      <div class="card stat-card"><div class="num" id="statRevision">0</div><div class="lbl">Revision</div></div>
+      <div class="card stat-card"><div class="num" id="statNotStarted">0</div><div class="lbl">Not Started</div></div>
+      <div class="card today-card">
+        <div>
+          <div class="t-title">Current Day · Today's Focus</div>
+          <div class="t-name" id="todayFocus">—</div>
+        </div>
+        <div style="text-align:right">
+          <div class="t-title">Estimated Completion</div>
+          <div class="t-name" id="estCompletion">Day 1 of 14</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Controls -->
+    <div class="controls">
+      <div class="search-box">
+        <span>🔍</span>
+        <input type="text" id="searchInput" placeholder="Search topics, Azure services or YouTube links…">
+      </div>
+      <div class="filters" id="filterChips">
+        <div class="filter-chip active" data-filter="all">All</div>
+        <div class="filter-chip" data-filter="completed">Completed</div>
+        <div class="filter-chip" data-filter="progress">In Progress</div>
+        <div class="filter-chip" data-filter="revision">Revision</div>
+        <div class="filter-chip" data-filter="not-started">Not Started</div>
+      </div>
+    </div>
+
+    <!-- Day content -->
+    <section id="dayContent"></section>
+
+    <footer class="notice">Everything on this page is saved automatically to your browser's Local Storage. No data leaves your device.</footer>
+  </main>
+</div>
+
+<script>
+/* =========================================================
+   DATA — 14 Day Azure-for-.NET-Developer roadmap
+   ========================================================= */
+const ROADMAP = [
+{ id:1, title:"Cloud Computing Fundamentals",
+  topics:["Why Cloud","IaaS","PaaS","SaaS","Public Cloud","Private Cloud","Hybrid Cloud","Azure Global Infrastructure","Azure Regions","Availability Zones","Resource Groups","Azure Portal","Azure Free Account"],
+  objectives:["Explain the difference between IaaS, PaaS and SaaS with real examples","Describe Azure's infrastructure hierarchy: Regions → Availability Zones → Resource Groups","Create a free Azure account and navigate the Azure Portal confidently"],
+  interviewQs:["What's the difference between IaaS, PaaS and SaaS — where does Azure App Service fit?","What is an Availability Zone and how is it different from a Region?","Why use Resource Groups, and what naming convention would you follow?"],
+  scenario:"You're moving the LKM Bookstore API to Azure and must decide between a VM (IaaS) and App Service (PaaS), then organize Dev/Test/Prod resources sensibly.",
+  mistakes:["Dumping every environment's resources into one Resource Group","Picking a region without considering latency, cost or data-residency rules"],
+  bestPractices:["One Resource Group per environment/application","Tag every resource for cost tracking and ownership","Choose a primary region close to users, paired with a DR region"],
+  docLink:"https://learn.microsoft.com/azure/", youtube:"https://youtu.be/NKEFWyqJ5XA", estLearn:90, estRevision:20 },
+
+{ id:2, title:"Azure Virtual Machines & Networking Basics",
+  topics:["Virtual Machines","Disks","Storage","Virtual Network","Subnet","NSG","Public IP","Private IP","Bastion","Load Balancer Basics"],
+  objectives:["Provision and connect to an Azure VM","Design a Virtual Network with subnets and Network Security Groups","Understand when to use a Load Balancer vs Application Gateway"],
+  interviewQs:["What's the difference between a Network Security Group and Azure Firewall?","How does Azure Bastion improve VM security compared to exposing RDP/SSH publicly?","When would you choose a VM over App Service for a .NET workload?"],
+  scenario:"Your team needs a VM-hosted background worker for LKM Bookstore that can only be reached from the App Service subnet, never from the public internet.",
+  mistakes:["Opening RDP/SSH (3389/22) directly to the internet","Using a single flat subnet for every tier of the application"],
+  bestPractices:["Use NSGs to allow only required ports between subnets","Use Bastion or a jump box instead of public RDP/SSH","Separate subnets per tier (web, app, data)"],
+  docLink:"https://learn.microsoft.com/azure/virtual-network/", youtube:"https://youtu.be/NKEFWyqJ5XA", estLearn:100, estRevision:25 },
+
+{ id:3, title:"Azure App Service",
+  topics:["App Service Plan","Deployment Slots","Publishing ASP.NET Core Web API","Publishing MVC","Configuration","Scaling","Custom Domains","SSL"],
+  objectives:["Publish an ASP.NET Core Web API and MVC app to App Service","Use Deployment Slots for zero-downtime releases","Configure app settings, custom domains and SSL bindings"],
+  interviewQs:["How do deployment slots enable a safe blue-green release for a .NET API?","What's the difference between App Service scale-up and scale-out?","Where should connection strings live in App Service configuration, and why not in appsettings.json?"],
+  scenario:"You need to deploy a new version of LKM Bookstore's API without downtime, and roll back instantly if health checks fail after go-live.",
+  mistakes:["Testing directly in the production slot","Storing secrets in appsettings.json instead of App Service configuration or Key Vault"],
+  bestPractices:["Deploy to a staging slot, warm it up, then swap","Use auto-scale rules based on CPU/queue length, not just fixed instance counts"],
+  docLink:"https://learn.microsoft.com/azure/app-service/", youtube:"https://youtu.be/NKEFWyqJ5XA", estLearn:100, estRevision:25 },
+
+{ id:4, title:"Azure SQL Database",
+  topics:["Connection Strings","Firewall","Backup","Restore","Geo Replication","SQL Performance","Entity Framework Connection"],
+  objectives:["Configure Azure SQL firewall rules and secure connection strings","Understand automated backups, point-in-time restore and geo-replication","Connect Entity Framework Core to Azure SQL and tune query performance"],
+  interviewQs:["How does point-in-time restore work in Azure SQL, and what's the retention window?","What's the difference between Active Geo-Replication and Auto-Failover Groups?","How would you diagnose a slow EF Core query against Azure SQL in production?"],
+  scenario:"LKM Bookstore's orders table is growing fast and a recent deploy caused timeouts — you need to find and fix the slow query without downtime.",
+  mistakes:["Leaving 'Allow Azure services' firewall rule open with no additional restriction","Ignoring DTU/vCore utilization until the database is already throttling"],
+  bestPractices:["Use Azure AD authentication over SQL logins where possible","Set up alerts on DTU/vCore usage and deadlocks","Use Query Performance Insight to find expensive queries"],
+  docLink:"https://learn.microsoft.com/azure/azure-sql/", youtube:"https://youtu.be/NKEFWyqJ5XA", estLearn:95, estRevision:20 },
+
+{ id:5, title:"Azure Storage Account",
+  topics:["Blob Storage","Containers","File Storage","Queues","Tables","Static Website Hosting","SAS Token"],
+  objectives:["Differentiate Blob, File, Queue and Table storage use-cases","Generate and scope SAS tokens for secure, time-limited access","Host a static website directly from a storage account"],
+  interviewQs:["What's the difference between a SAS token and a Storage Account key, and which is safer to hand to a client app?","When would you choose Table Storage over Azure SQL?","How do Storage Queues differ from Service Bus Queues?"],
+  scenario:"LKM Bookstore needs to let users upload book cover images directly from the browser without routing the file through your API.",
+  mistakes:["Sharing the Storage Account key instead of a scoped SAS token","Making a container public when only specific blobs need public access"],
+  bestPractices:["Issue short-lived, least-privilege SAS tokens per operation","Use private containers plus SAS for user uploads","Enable soft delete on blob containers"],
+  docLink:"https://learn.microsoft.com/azure/storage/", youtube:"https://youtu.be/NKEFWyqJ5XA", estLearn:90, estRevision:20 },
+
+{ id:6, title:"Azure Functions",
+  topics:["Triggers","HTTP Trigger","Timer Trigger","Blob Trigger","Dependency Injection","Publishing Functions","Real Time Use Cases"],
+  objectives:["Build HTTP, Timer and Blob-triggered Azure Functions in C#","Wire up dependency injection inside an isolated-process Function App","Deploy and monitor a Function App"],
+  interviewQs:["What's the difference between the in-process and isolated-worker Functions models?","How would you handle a Function that must run exactly once even under retries?","When is a Function App a better fit than a background service in App Service?"],
+  scenario:"LKM Bookstore needs a nightly job that scans for overdue book reservations and sends reminder emails — a perfect Timer Trigger use case.",
+  mistakes:["Doing long-running, stateful work inside a Consumption-plan function (cold starts, timeouts)","Not making functions idempotent, causing duplicate side-effects on retry"],
+  bestPractices:["Keep functions small, stateless and idempotent","Use Durable Functions for multi-step orchestration","Choose Premium plan for latency-sensitive or long-running workloads"],
+  docLink:"https://learn.microsoft.com/azure/azure-functions/", youtube:"https://youtu.be/NKEFWyqJ5XA", estLearn:105, estRevision:25 },
+
+{ id:7, title:"Azure Logic Apps",
+  topics:["Logic Apps vs Functions","Workflow","Email Automation","Approval Workflow","Connectors","Real Time Examples"],
+  objectives:["Distinguish when to use Logic Apps vs Functions vs Service Bus","Build a workflow using built-in connectors (email, approval)","Understand triggers, actions and control flow in Logic Apps"],
+  interviewQs:["When would you pick a Logic App over an Azure Function for the same integration task?","How do you handle error handling and retries inside a Logic App?","What's the pricing model difference between Logic Apps and Functions?"],
+  scenario:"A new large book order for LKM Bookstore should trigger a manager approval email before the order is confirmed — a low-code Logic App fits well here.",
+  mistakes:["Using a Logic App for high-throughput, latency-sensitive processing better suited to code","Ignoring the per-action cost model on high-volume workflows"],
+  bestPractices:["Use Logic Apps for low-code business workflows and SaaS integrations","Use Functions/code for high-volume, performance-critical logic"],
+  docLink:"https://learn.microsoft.com/azure/logic-apps/", youtube:"https://youtu.be/NKEFWyqJ5XA", estLearn:80, estRevision:18 },
+
+{ id:8, title:"Azure Key Vault",
+  topics:["Secrets","Certificates","Keys","Managed Identity","Using Key Vault from ASP.NET Core","Real Project Example"],
+  objectives:["Store secrets, keys and certificates securely in Key Vault","Use Managed Identity so apps never hold credentials in code","Wire Key Vault into ASP.NET Core configuration"],
+  interviewQs:["Why is Managed Identity preferred over storing a Key Vault connection string?","What's the difference between a Key Vault Secret, Key and Certificate?","How would you rotate a database password stored in Key Vault with zero downtime?"],
+  scenario:"LKM Bookstore's SQL connection string and JWT signing key currently sit in appsettings.json — you need to move both into Key Vault safely.",
+  mistakes:["Granting broad 'Contributor' access instead of scoped Key Vault access policies/RBAC","Hard-coding a Key Vault client secret instead of using Managed Identity"],
+  bestPractices:["Enable Managed Identity on the App Service and grant least-privilege access","Use Key Vault references in App Service configuration","Enable soft-delete and purge protection"],
+  docLink:"https://learn.microsoft.com/azure/key-vault/", youtube:"https://youtu.be/NKEFWyqJ5XA", estLearn:95, estRevision:22 },
+
+{ id:9, title:"Azure Service Bus",
+  topics:["Queues","Topics","Subscriptions","Dead Letter Queue","Retry","Message Ordering","Real Time Example"],
+  objectives:["Differentiate Service Bus Queues (point-to-point) from Topics/Subscriptions (pub-sub)","Handle poison messages using the Dead Letter Queue","Implement retry and duplicate detection for reliable messaging"],
+  interviewQs:["When would you use a Topic with multiple Subscriptions instead of separate Queues?","How does the Dead Letter Queue help you handle poison messages?","How do you guarantee message ordering in Service Bus, and what are the trade-offs?"],
+  scenario:"When a book order is placed on LKM Bookstore, both the Inventory service and the Notification service need to react independently — a Topic with two Subscriptions fits perfectly.",
+  mistakes:["Using a single Queue when multiple independent consumers need the same event","Not configuring max delivery count, letting poison messages loop forever"],
+  bestPractices:["Use Topics + Subscriptions for pub-sub across microservices","Set sensible max delivery count and monitor the Dead Letter Queue","Use sessions when strict per-entity ordering is required"],
+  docLink:"https://learn.microsoft.com/azure/service-bus-messaging/", youtube:"https://youtu.be/NKEFWyqJ5XA", estLearn:110, estRevision:28 },
+
+{ id:10, title:"Azure Monitor & Observability",
+  topics:["Application Insights","Logging","Metrics","Alerts","Distributed Tracing","Serilog Integration","Monitoring ASP.NET Core"],
+  objectives:["Wire Application Insights into an ASP.NET Core app","Use Serilog with Application Insights sink for structured logging","Set up alerts on key metrics and understand distributed tracing"],
+  interviewQs:["How does distributed tracing help you debug a request that spans App Service, a Function and Service Bus?","What's the difference between a log, a metric and a trace in Application Insights?","How would you set up an alert for API error-rate spikes?"],
+  scenario:"Customers report LKM Bookstore checkout is intermittently slow — you need end-to-end tracing across the API, SQL and Service Bus calls to find the bottleneck.",
+  mistakes:["Logging only unstructured strings, making queries in Log Analytics painful","No alerting configured until an outage is already user-facing"],
+  bestPractices:["Use structured logging (Serilog) with correlation/operation IDs","Set proactive alerts on latency, error rate and dependency failures","Sample telemetry sensibly to control cost at scale"],
+  docLink:"https://learn.microsoft.com/azure/azure-monitor/", youtube:"https://youtu.be/NKEFWyqJ5XA", estLearn:100, estRevision:24 },
+
+{ id:11, title:"Azure DevOps",
+  topics:["Repos","Boards","Pipelines","Artifacts","Release Pipeline","CI/CD","Deploy ASP.NET Core"],
+  objectives:["Set up a CI pipeline that builds and tests an ASP.NET Core solution","Publish build artifacts and deploy via a release pipeline","Use Boards to track work items linked to commits/PRs"],
+  interviewQs:["What's the difference between a build (CI) pipeline and a release (CD) pipeline?","How would you set up separate stages for Dev, QA and Prod with approvals?","What's stored in a build artifact, and why not deploy directly from source?"],
+  scenario:"You want every pull request into LKM Bookstore's main branch to automatically build, run unit tests, and block merge on failure.",
+  mistakes:["No branch policies, allowing merges without passing CI","Manually deploying to production instead of using a repeatable pipeline"],
+  bestPractices:["Require CI success and code review before merge","Use YAML pipelines stored in source control (pipeline-as-code)","Add approval gates before production deployment"],
+  docLink:"https://learn.microsoft.com/azure/devops/", youtube:"https://youtu.be/NKEFWyqJ5XA", estLearn:105, estRevision:25 },
+
+{ id:12, title:"Docker",
+  topics:["Containers","Dockerfile","Images","Volumes","Publishing ASP.NET Core","Azure Container Registry","Container Apps Overview"],
+  objectives:["Write a Dockerfile for an ASP.NET Core Web API","Build, tag and push images to Azure Container Registry","Understand when to use Container Apps vs AKS"],
+  interviewQs:["What's the difference between a Docker image and a container?","Why use a multi-stage Dockerfile for a .NET app?","When would you choose Azure Container Apps over full AKS?"],
+  scenario:"You want to containerize LKM Bookstore's API so it runs identically on your laptop and in Azure, without 'works on my machine' issues.",
+  mistakes:["Shipping the SDK image to production instead of a slim runtime image","Baking secrets/connection strings directly into the image"],
+  bestPractices:["Use multi-stage builds: SDK to build, runtime image to ship","Pass configuration via environment variables, not the image","Scan images for vulnerabilities before pushing to ACR"],
+  docLink:"https://learn.microsoft.com/azure/container-registry/", youtube:"https://youtu.be/NKEFWyqJ5XA", estLearn:100, estRevision:24 },
+
+{ id:13, title:"AKS Basics",
+  topics:["Pods","Deployments","ReplicaSets","Services","Ingress","Scaling","Deploy ASP.NET Core Application"],
+  objectives:["Understand core Kubernetes objects: Pods, Deployments, ReplicaSets, Services","Expose an app via Ingress and configure horizontal auto-scaling","Deploy a containerized ASP.NET Core app to AKS"],
+  interviewQs:["What's the difference between a Deployment and a ReplicaSet in Kubernetes?","How does a Kubernetes Service differ from Ingress?","How does Horizontal Pod Autoscaler decide when to scale?"],
+  scenario:"LKM Bookstore's API image (built in Day 12) needs to run as 3 replicas behind a single public endpoint on AKS, scaling automatically under load.",
+  mistakes:["No resource requests/limits set, letting one pod starve the node","Exposing every service directly instead of routing through Ingress"],
+  bestPractices:["Set CPU/memory requests and limits on every Deployment","Use readiness/liveness probes so traffic only reaches healthy pods","Use Ingress + a single entry point instead of many public LoadBalancers"],
+  docLink:"https://learn.microsoft.com/azure/aks/", youtube:"https://youtu.be/NKEFWyqJ5XA", estLearn:115, estRevision:30 },
+
+{ id:14, title:"Mini Project — End-to-End Deployment",
+  topics:["Create ASP.NET Core Web API","Azure SQL","Azure App Service","Key Vault","Service Bus","Application Insights","Deploy Complete Project","CI/CD","Documentation"],
+  objectives:["Combine everything into one deployed project using LKM Bookstore as the base","Wire App Service + Azure SQL + Key Vault + Service Bus + Application Insights together","Automate the whole deployment through an Azure DevOps CI/CD pipeline"],
+  interviewQs:["Walk me through the full architecture of a production .NET app you've deployed on Azure.","How do all these pieces (App Service, Key Vault, Service Bus, App Insights) fit together, and why each one?","What would you change about this architecture to handle 10x the traffic?"],
+  scenario:"This is the capstone: deploy LKM Bookstore end-to-end on Azure exactly as you'd present it in a Round 3 system-design discussion.",
+  mistakes:["Presenting components in isolation instead of explaining how they connect end-to-end","No documentation, making the architecture hard to explain under interview pressure"],
+  bestPractices:["Draw and rehearse a one-page architecture diagram you can talk through in 60 seconds","Write a short README covering architecture, deployment steps and trade-offs"],
+  docLink:"https://learn.microsoft.com/azure/architecture/", youtube:"https://youtu.be/NKEFWyqJ5XA", estLearn:150, estRevision:40 }
+];
+
+/* =========================================================
+   STATE
+   ========================================================= */
+const STORAGE_KEY = "azureTrackerState_v1";
+const THEME_KEY = "azureTrackerTheme_v1";
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){ console.warn("Could not parse saved state", e); }
+  const fresh = {};
+  ROADMAP.forEach(day=>{
+    fresh[day.id] = {
+      topicStatus: {}, // topicName -> "not-started"|"progress"|"completed"|"revision"
+      notes:"", timeSpent:"", difficulty:"Medium", revisionDate:"", expandOpen:false
+    };
+    day.topics.forEach(t=> fresh[day.id].topicStatus[t] = "not-started");
+  });
+  return fresh;
+}
+let state = loadState();
+let currentDay = 1;
+let currentFilter = "all";
+let searchTerm = "";
+
+function saveState(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  renderDashboard();
+  renderRail();
+}
+
+/* =========================================================
+   HELPERS
+   ========================================================= */
+function statusMeta(status){
+  switch(status){
+    case "completed": return {dot:"green", label:"Completed"};
+    case "progress": return {dot:"blue", label:"In Progress"};
+    case "revision": return {dot:"orange", label:"Revision Required"};
+    default: return {dot:"gray", label:"Not Started"};
+  }
+}
+function allTopicsFlat(){
+  const flat = [];
+  ROADMAP.forEach(day=>{
+    day.topics.forEach(t=> flat.push({dayId:day.id, dayTitle:day.title, topic:t, status: state[day.id].topicStatus[t]}));
+  });
+  return flat;
+}
+function dayNodeStatus(dayId){
+  const st = state[dayId].topicStatus;
+  const vals = Object.values(st);
+  if(vals.every(v=>v==="completed")) return "done";
+  if(vals.some(v=>v==="revision")) return "revision";
+  if(vals.some(v=>v==="progress"||v==="completed")) return "progress";
+  return "";
+}
+
+/* =========================================================
+   RENDER: SIDEBAR RAIL
+   ========================================================= */
+function renderRail(){
+  const rail = document.getElementById("dayRail");
+  rail.innerHTML = "";
+  ROADMAP.forEach(day=>{
+    const item = document.createElement("div");
+    item.className = "day-item" + (day.id===currentDay ? " active":"");
+    const nodeClass = dayNodeStatus(day.id);
+    item.innerHTML = `
+      <div class="day-node ${nodeClass}">${day.id}</div>
+      <div class="day-label"><b>Day ${day.id}</b><small>${day.title}</small></div>`;
+    item.addEventListener("click", ()=>{ currentDay = day.id; document.getElementById("pageTitle").textContent = "Day "+day.id; renderDayContent(); renderRail(); window.scrollTo({top:0,behavior:"smooth"}); });
+    rail.appendChild(item);
+  });
+}
+
+/* =========================================================
+   RENDER: DASHBOARD
+   ========================================================= */
+function renderDashboard(){
+  const flat = allTopicsFlat();
+  const total = flat.length;
+  const completed = flat.filter(f=>f.status==="completed").length;
+  const progress = flat.filter(f=>f.status==="progress").length;
+  const revision = flat.filter(f=>f.status==="revision").length;
+  const notStarted = flat.filter(f=>f.status==="not-started").length;
+  const pct = total ? Math.round((completed/total)*100) : 0;
+
+  document.getElementById("statCompleted").textContent = completed;
+  document.getElementById("statProgress").textContent = progress;
+  document.getElementById("statRevision").textContent = revision;
+  document.getElementById("statNotStarted").textContent = notStarted;
+  document.getElementById("overallSub").textContent = `${completed} of ${total} topics completed`;
+
+  const circumference = 264;
+  const offset = circumference - (pct/100)*circumference;
+  document.getElementById("ringFg").style.strokeDashoffset = offset;
+  document.getElementById("ringText").textContent = pct+"%";
+
+  // today's focus = first day that isn't fully completed
+  let focusDay = ROADMAP.find(d => Object.values(state[d.id].topicStatus).some(s=>s!=="completed")) || ROADMAP[ROADMAP.length-1];
+  document.getElementById("todayFocus").textContent = `Day ${focusDay.id} — ${focusDay.title}`;
+  document.getElementById("estCompletion").textContent = `Day ${focusDay.id} of ${ROADMAP.length} (${pct}% overall)`;
+}
+
+/* =========================================================
+   RENDER: DAY CONTENT
+   ========================================================= */
+function matchesFilterAndSearch(day, topic){
+  const status = state[day.id].topicStatus[topic];
+  if(currentFilter!=="all"){
+    if(currentFilter==="completed" && status!=="completed") return false;
+    if(currentFilter==="progress" && status!=="progress") return false;
+    if(currentFilter==="revision" && status!=="revision") return false;
+    if(currentFilter==="not-started" && status!=="not-started") return false;
+  }
+  if(searchTerm){
+    const hay = (topic+" "+day.title+" "+day.youtube).toLowerCase();
+    if(!hay.includes(searchTerm.toLowerCase())) return false;
+  }
+  return true;
+}
+
+function renderDayContent(){
+  const day = ROADMAP.find(d=>d.id===currentDay);
+  const dState = state[day.id];
+  const container = document.getElementById("dayContent");
+
+  const visibleTopics = day.topics.filter(t=>matchesFilterAndSearch(day,t));
+
+  container.innerHTML = `
+    <div class="day-header">
+      <h3>Day ${day.id} — ${day.title}</h3>
+      <div class="links">
+        <a class="tag-link" href="${day.docLink}" target="_blank" rel="noopener">📘 Microsoft Docs</a>
+        <a class="tag-link" href="${day.youtube}" target="_blank" rel="noopener">▶ YouTube</a>
+        <span class="tag-link">⏱ Learn ~${day.estLearn}min · Revise ~${day.estRevision}min</span>
+      </div>
+    </div>
+
+    <div class="topic-list" id="topicList"></div>
+
+    <div class="expand-card">
+      <div class="expand-toggle" id="expandToggle">
+        <h4>📂 Deep Dive — Objectives, Interview Prep & Notes</h4>
+        <span class="expand-toggle-icon">${dState.expandOpen ? "▲":"▼"}</span>
+      </div>
+      <div class="expand-body" id="expandBody" style="display:${dState.expandOpen?"grid":"none"}">
+        <div>
+          <h5>Learning Objectives</h5>
+          <ul>${day.objectives.map(o=>`<li>${o}</li>`).join("")}</ul>
+          <h5>Interview Questions</h5>
+          <ul>${day.interviewQs.map(q=>`<li>${q}</li>`).join("")}</ul>
+        </div>
+        <div>
+          <h5>Real-Time Scenario (LKM Bookstore)</h5>
+          <p>${day.scenario}</p>
+          <h5>Common Mistakes</h5>
+          <ul>${day.mistakes.map(m=>`<li>${m}</li>`).join("")}</ul>
+          <h5>Best Practices</h5>
+          <ul>${day.bestPractices.map(b=>`<li>${b}</li>`).join("")}</ul>
+        </div>
+      </div>
+
+      <div class="meta-grid">
+        <div class="field">
+          <label>Time Spent (minutes)</label>
+          <input type="number" min="0" id="timeSpentInput" value="${dState.timeSpent}">
+        </div>
+        <div class="field">
+          <label>Difficulty</label>
+          <select id="difficultySelect">
+            <option ${dState.difficulty==="Easy"?"selected":""}>Easy</option>
+            <option ${dState.difficulty==="Medium"?"selected":""}>Medium</option>
+            <option ${dState.difficulty==="Hard"?"selected":""}>Hard</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Revision Date</label>
+          <input type="date" id="revisionDateInput" value="${dState.revisionDate}">
+        </div>
+        <div class="field" style="grid-column:span 1">
+          <label>&nbsp;</label>
+          <button class="btn small" id="markDayDone">✓ Mark all topics completed</button>
+        </div>
+      </div>
+      <div class="field" style="margin-top:12px;">
+        <label>Notes</label>
+        <textarea id="notesInput" placeholder="Your notes for this day…">${dState.notes}</textarea>
+      </div>
+    </div>
+  `;
+
+  // topic rows
+  const topicList = document.getElementById("topicList");
+  if(visibleTopics.length===0){
+    topicList.innerHTML = `<div class="card" style="text-align:center; color:var(--muted); padding:24px;">No topics match your search/filter.</div>`;
+  }
+  visibleTopics.forEach(topic=>{
+    const status = dState.topicStatus[topic];
+    const meta = statusMeta(status);
+    const row = document.createElement("div");
+    row.className = "topic-row";
+    row.innerHTML = `
+      <input type="checkbox" ${status==="completed"?"checked":""} data-topic="${topic}">
+      <span class="dot ${meta.dot}"></span>
+      <span class="name ${status==="completed"?"done":""}">${topic}</span>
+      <select data-topic-select="${topic}">
+        <option value="not-started" ${status==="not-started"?"selected":""}>Not Started</option>
+        <option value="progress" ${status==="progress"?"selected":""}>In Progress</option>
+        <option value="completed" ${status==="completed"?"selected":""}>Completed</option>
+        <option value="revision" ${status==="revision"?"selected":""}>Revision Required</option>
+      </select>
+    `;
+    row.querySelector("input[type=checkbox]").addEventListener("change", e=>{
+      dState.topicStatus[topic] = e.target.checked ? "completed" : "not-started";
+      saveState(); renderDayContent();
+    });
+    row.querySelector("select").addEventListener("change", e=>{
+      dState.topicStatus[topic] = e.target.value;
+      saveState(); renderDayContent();
+    });
+    topicList.appendChild(row);
+  });
+
+  // expand toggle
+  document.getElementById("expandToggle").addEventListener("click", ()=>{
+    dState.expandOpen = !dState.expandOpen;
+    saveState(); renderDayContent();
+  });
+
+  // meta fields
+  document.getElementById("timeSpentInput").addEventListener("input", e=>{ dState.timeSpent = e.target.value; saveState(); });
+  document.getElementById("difficultySelect").addEventListener("change", e=>{ dState.difficulty = e.target.value; saveState(); });
+  document.getElementById("revisionDateInput").addEventListener("change", e=>{ dState.revisionDate = e.target.value; saveState(); });
+  document.getElementById("notesInput").addEventListener("input", e=>{ dState.notes = e.target.value; saveState(); });
+  document.getElementById("markDayDone").addEventListener("click", ()=>{
+    day.topics.forEach(t=> dState.topicStatus[t] = "completed");
+    saveState(); renderDayContent();
+  });
+}
+
+/* =========================================================
+   FILTERS / SEARCH
+   ========================================================= */
+document.getElementById("filterChips").addEventListener("click", e=>{
+  const chip = e.target.closest(".filter-chip");
+  if(!chip) return;
+  document.querySelectorAll(".filter-chip").forEach(c=>c.classList.remove("active"));
+  chip.classList.add("active");
+  currentFilter = chip.dataset.filter;
+  renderDayContent();
+});
+document.getElementById("searchInput").addEventListener("input", e=>{
+  searchTerm = e.target.value;
+  renderDayContent();
+});
+
+/* =========================================================
+   THEME
+   ========================================================= */
+function applyTheme(theme){
+  document.documentElement.setAttribute("data-theme", theme);
+  document.getElementById("themeToggle").textContent = theme==="dark" ? "☀ Light mode" : "🌙 Dark mode";
+  localStorage.setItem(THEME_KEY, theme);
+}
+document.getElementById("themeToggle").addEventListener("click", ()=>{
+  const cur = document.documentElement.getAttribute("data-theme")==="dark" ? "light":"dark";
+  applyTheme(cur);
+});
+applyTheme(localStorage.getItem(THEME_KEY) || "light");
+
+/* =========================================================
+   EXPORT / IMPORT
+   ========================================================= */
+document.getElementById("exportJsonBtn").addEventListener("click", ()=>{
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "azure-tracker-backup.json";
+  a.click();
+});
+document.getElementById("importJsonBtn").addEventListener("click", ()=> document.getElementById("importFile").click());
+document.getElementById("importFile").addEventListener("change", e=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = evt=>{
+    try{
+      const imported = JSON.parse(evt.target.result);
+      state = imported;
+      saveState(); renderDayContent();
+      alert("Backup imported successfully.");
+    }catch(err){ alert("Invalid JSON file."); }
+  };
+  reader.readAsText(file);
+});
+document.getElementById("exportCsvBtn").addEventListener("click", ()=>{
+  let rows = [["Day","Topic","Status","Difficulty","Time Spent (min)","Revision Date","Notes"]];
+  ROADMAP.forEach(day=>{
+    const dState = state[day.id];
+    day.topics.forEach(t=>{
+      rows.push([`Day ${day.id}`, t, statusMeta(dState.topicStatus[t]).label, dState.difficulty, dState.timeSpent, dState.revisionDate, (dState.notes||"").replace(/(\r\n|\n|\r)/g," ")]);
+    });
+  });
+  const csv = rows.map(r=> r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(",")).join("\n");
+  const blob = new Blob([csv], {type:"text/csv"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "azure-tracker-progress.csv";
+  a.click();
+});
+document.getElementById("exportPdfBtn").addEventListener("click", ()=> window.print());
+
+/* =========================================================
+   INIT
+   ========================================================= */
+renderRail();
+renderDashboard();
+renderDayContent();
+document.getElementById("pageTitle").textContent = "Day 1";
+</script>
+</body>
+</html>
